@@ -1,0 +1,202 @@
+---
+title: "ACURA CSD Analysis V1.76"
+author: "Russell Chan"
+date: "8th April 2019"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+##Set working directory
+```{r working d}
+setwd("C:/Users/Russell Chan/Dropbox/AA EXP 3 Paper 4 Analysis/Current Analysis")
+```
+
+##Packages
+```{r Libraries, echo=TRUE, message=FALSE, warning=FALSE, paged.print=FALSE}
+library(lme4)
+library(effects)
+library(lattice)
+library(car)
+library(ggplot2) 
+library(knitr)
+library(reshape2)
+library(reshapeGUI)
+library(dplyr)
+library(forcats)
+library(DHARMa)
+library(Hmisc)
+library(qpcR)
+library(phia)
+library(lsmeans)
+library(emmeans)
+library(multcomp)
+library(plotly)
+library(lmerTest)
+library(optimx)
+```
+
+##Import dataset
+```{r Import dataset and factors, paged.print=FALSE}
+d.MU<-read.table("Pow_Data_DEC18_V3.4.CSV", sep = ",", header = T, stringsAsFactors = F)
+```
+
+#Factors
+```{r Creating factors, message=FALSE, paged.print=FALSE}
+#Create Factors
+d.MU$ID <- factor(d.MU$ID)
+d.MU$Group <- factor(d.MU$Group)
+d.MU$RoI <- factor(d.MU$RoI, levels=c('F', 'C', 'P'))
+d.MU$Session <- factor(d.MU$Session, levels=c('1', '2', '3'))
+#d.MU$Timepoint <-as.numeric(d.MU$Timepoint, levels=c('1', '2', '3', '4', '5', '6', '7', '8', '9', '10'))
+#d.MU$Timepoint <- factor(d.MU$Timepoint)
+d.MU$muTheta <- as.numeric(d.MU$muTheta)
+d.MU$muAlpha <- as.numeric(d.MU$muAlpha)
+```
+
+
+#Model_THETA_1: Random Intercepts: ID. Random Slopes: RoI. Keeping it maximal.
+```{r ModelT1, paged.print=FALSE}
+m.T1 <- lmer(muTheta ~ Group * Session * RoI  + (1 | ID), data=d.MU, REML =TRUE, control = lmerControl(optimizer ="Nelder_Mead"))
+Anova(m.T1)
+m.T1test <- as(m.T1,"lmerModLmerTest")
+summary(m.T1test, ddf="Satterthwaite")
+plot(m.T1test)
+```
+
+#Model_THETA_1.5: Theta Random Intercepts: ID. No Random Slopes. Minimum model.
+```{r ModelT1.5, paged.print=FALSE}
+m.T1.5 <- lmer(muTheta ~ Group * Session * RoI  + (1 + RoI | ID), data=d.MU, REML =TRUE, control = lmerControl(optimizer ="Nelder_Mead"))
+Anova(m.T1.5)
+m.T1.5test <- as(m.T1.5,"lmerModLmerTest")
+summary(m.T1.5test, ddf="Satterthwaite")
+plot(m.T1.5test)
+```
+#Posthocs on each of the interactions(group level) in the predictors:m.T1.5 <- This is right.
+```{r Interaction on T predictors}
+summary(glht(m.T1.5, emm(pairwise ~ Group | Session * RoI)))
+```
+
+#Interaction plot of predictors: m.T1.5
+```{r Interaction Plots T, paged.print=FALSE}
+emmip(m.T1.5, Group ~ Session | RoI)
+plot(emmeans(m.T1.5, ~ Group | Session*RoI))
+```
+
+#Model_ALPHA_1: Random Intercepts: ID. Random Slopes: RoI. Maximal.
+```{r ModelA1, paged.print=FALSE}
+m.A1 <- lmer(muAlpha ~ Group * Session * RoI  + (1 | ID), data=d.MU, REML = TRUE, control = lmerControl(optimizer ="Nelder_Mead"))
+Anova(m.A1)
+m.A1test <- as(m.A1,"lmerModLmerTest")
+summary(m.A1test, ddf="Satterthwaite")
+plot(m.A1test)
+```
+
+#Model_ALPHA_1.5: Random Intercepts: ID. No Random Slopes.  Minimum model.
+```{r ModelA1.5, paged.print=FALSE}
+m.A1.5 <- lmer(muAlpha ~ Group * Session * RoI  + (1 + RoI | ID), data=d.MU, REML = TRUE, control = lmerControl(optimizer ="Nelder_Mead"))
+Anova(m.A1.5)
+m.A1.5test <- as(m.A1.5,"lmerModLmerTest")
+summary(m.A1.5test, ddf="Satterthwaite")
+plot(m.A1.5test)
+```
+
+#Posthocs on each of the interactions(group level) in the predictors:m.A1.5 <- This is right.
+```{r Interaction on A predictors}
+summary(glht(m.A1.5, emm(pairwise ~ Group | Session * RoI)))
+```
+
+#Interaction plot of predictors: m.A1.5
+```{r Interaction A Plots, paged.print=FALSE}
+emmip(m.A1.5, Group ~ Session | RoI)
+plot(emmeans(m.A1.5, ~ Group | Session*RoI))
+```
+
+#Modelfit checking.
+```{r AIC, paged.print=FALSE}
+anova(m.T1, m.T1.5)
+anova(m.A1, m.A1.5)
+```
+
+#All effects Model T1 and A1 modeling SESSIONS model here.
+```{r All effects}
+#Model T1 Effects
+ae.m.T1 <- allEffects(m.T1)
+ae.m.df.T1 <- as.data.frame(ae.m.T1[[1]])
+#Ordering RoI
+ae.m.df.T1$RoI <- factor(ae.m.df.T1$RoI, levels=c('F', 'C', 'P'))
+#Ordering Session
+ae.m.df.T1$Session <- as.character(ae.m.df.T1$Session)
+ae.m.df.T1$Session <- as.numeric(ae.m.df.T1$Session)
+
+#Model T1.5 Effects
+ae.m.T1.5 <- allEffects(m.T1.5)
+ae.m.df.T1.5 <- as.data.frame(ae.m.T1.5[[1]])
+#Ordering RoI
+ae.m.df.T1.5$RoI <- factor(ae.m.df.T1.5$RoI, levels=c('F', 'C', 'P'))
+#Ordering Session
+ae.m.df.T1.5$Session <- as.character(ae.m.df.T1.5$Session)
+ae.m.df.T1.5$Session <- as.numeric(ae.m.df.T1.5$Session)
+
+#Model A1 Effects
+ae.m.A1 <- allEffects(m.A1)
+ae.m.df.A1 <- as.data.frame(ae.m.A1[[1]])
+#Ordering RoI
+ae.m.df.A1$RoI <- factor(ae.m.df.A1$RoI, levels=c('F', 'C', 'P'))
+#Ordering Session
+ae.m.df.A1$Session <- as.character(ae.m.df.A1$Session)
+ae.m.df.A1$Session <- as.numeric(ae.m.df.A1$Session)
+
+#Model A1.5 Effects
+ae.m.A1.5 <- allEffects(m.A1.5)
+ae.m.df.A1.5 <- as.data.frame(ae.m.A1.5[[1]])
+#Ordering RoI
+ae.m.df.A1.5$RoI <- factor(ae.m.df.A1.5$RoI, levels=c('F', 'C', 'P'))
+#Ordering Session
+ae.m.df.A1.5$Session <- as.character(ae.m.df.A1.5$Session)
+ae.m.df.A1.5$Session <- as.numeric(ae.m.df.A1.5$Session)
+```
+
+#RAW effects plots
+```{r Plot just for general visualisation}
+plot(ae.m.T1)
+plot(ae.m.T1.5)
+plot(ae.m.A1)
+plot(ae.m.A1.5)
+```
+
+#Plotting models T1.5 & A1.5 (95% CIs). Since they are significantly better models 
+```{r Plotting the models}
+#Model T1.5 plot: with 95% CIs
+ae.T1.5 <- ggplot(ae.m.df.T1.5, aes(x=Session,y=fit, color=Group))+
+  geom_line() +
+  geom_path(aes(x=Session, y=fit, color=Group)) +
+  geom_errorbar(aes(ymin=lower, ymax=upper), width=.1) +
+  geom_point(aes(color = Group))+
+  ylab("Mean Current Source Density (n.u.)")+
+  scale_x_continuous(name="Session", breaks=c(1,2,3) , limits=c(0.75,3.25))+
+  ggtitle("Theta M1.5: Group x Session x RoI")+
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.background = element_blank(), axis.line = element_line(colour = "black"))+
+  facet_grid(RoI~.)
+plot(ae.T1.5)
+
+#Model A1 plot: with 95% CIs
+ae.A1.5 <- ggplot(ae.m.df.A1.5, aes(x=Session,y=fit, color=Group))+
+  geom_line() +
+  geom_path(aes(x=Session, y=fit, color=Group)) +
+  geom_errorbar(aes(ymin=lower, ymax=upper), width=.1) +
+  geom_point(aes(color = Group))+
+  ylab("Mean Current Source Density (n.u.)")+
+  scale_x_continuous(name="Session", breaks=c(1,2,3) , limits=c(0.75,3.25))+
+  ggtitle("Alpha M1.5: Group x Session x RoI")+
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.background = element_blank(), axis.line = element_line(colour = "black"))+
+  facet_grid(RoI~.)
+plot(ae.A1.5)
+```
+
+######################################################################################################
