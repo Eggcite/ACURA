@@ -9,7 +9,7 @@ This is the git for EEG changes followig meditation training. Keeping the work h
 Update: April 2019 - In progress and will freely available under the GNU General Public License.
 Project on OSF: https://osf.io/qjxuf/
 
-### Spectral power and individual 
+### Title: Spectral power and individual alpha frequency changes following single-session and short-term focused-attention meditation training.
 
 ### Contributors:
 Chan, R. W. - Idea conception, current coding, conduct of experiment, interpretation, statistics, lead author
